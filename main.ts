@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GUI } from 'three/examples/jsm/libs/lil-gui.module.min.js';
-import { createPortal } from './portal';
 import { initEnvironment } from './environment';
 
 const scene = new THREE.Scene();
@@ -32,7 +31,8 @@ scene.add(ambientLight);
 // Pozycje portali
 const redPortalPosition = new THREE.Vector3(11, 0, 7);
 const bluePortalPosition = new THREE.Vector3(-16, 0, -7);
-const bluePortalRotation = new THREE.Euler(0, - Math.PI / 2, 0); // obrót o 90 stopni w lewo
+const redPortalRotation = new THREE.Euler(0, 0, 0);
+const bluePortalRotation = new THREE.Euler(0, - Math.PI / 2, 0);
 
 // Kamera czerwonego portalu
 const redPortalRenderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight);
@@ -53,9 +53,11 @@ portalStencil.stencilWrite = true;
 portalStencil.stencilRef = 1;
 portalStencil.stencilFunc = THREE.AlwaysStencilFunc;
 portalStencil.stencilZPass = THREE.ReplaceStencilOp;
+portalStencil.side = THREE.DoubleSide;
 
 const redPortalStencil = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), portalStencil.clone());
 redPortalStencil.position.copy(redPortalPosition);
+redPortalStencil.rotation.copy(redPortalRotation);
 redPortalStencil.renderOrder = 1;
 scene.add(redPortalStencil);
 const redStencilFrame = new THREE.BoxHelper(redPortalStencil, 'red');
@@ -78,6 +80,7 @@ redPortalMaterial.stencilFunc = THREE.EqualStencilFunc;
 redPortalMaterial.stencilZPass = THREE.KeepStencilOp;
 const redPortalPlane = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), redPortalMaterial);
 redPortalPlane.position.copy(redPortalPosition);
+redPortalPlane.rotation.copy(redPortalRotation);
 redPortalPlane.renderOrder = 2;
 scene.add(redPortalPlane);
 
@@ -126,7 +129,8 @@ function createPortalScreenSpaceMaterial(renderTarget) {
         stencilWrite: true,
         stencilRef: 1,
         stencilFunc: THREE.EqualStencilFunc,
-        stencilZPass: THREE.KeepStencilOp
+        stencilZPass: THREE.KeepStencilOp,
+        side: THREE.DoubleSide,
     });
 }
 
@@ -140,8 +144,8 @@ bluePortalPlane.material = redPortalScreenMat;
 const redCameraHelper = new THREE.CameraHelper(redPortalCamera);
 const blueCameraHelper = new THREE.CameraHelper(bluePortalCamera);
 
-scene.add(blueCameraHelper);
-scene.add(redCameraHelper);
+// scene.add(blueCameraHelper);
+// scene.add(redCameraHelper);
 
 function animate() {
     controls.update();
@@ -193,5 +197,4 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-renderer.setAnimationLoop(animate);
 renderer.setAnimationLoop(animate);
