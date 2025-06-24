@@ -19,8 +19,12 @@ const controls = new OrbitControls( camera, renderer.domElement );
 const backgroundTexture = new THREE.TextureLoader().load('/textures/background.jpg');
 scene.background = backgroundTexture;
 
-//const gui = new GUI;
-//gui.add(camera, 'fov', 1, 180).onChange();
+const gui = new GUI();
+const helpersFolder = gui.addFolder('Camera Helpers');
+const helpersState = {
+    redCameraHelper: false,
+    blueCameraHelper: false
+};
 
 // Światła
 const ambientLight = new THREE.AmbientLight(0xffffff, 2);
@@ -134,8 +138,13 @@ bluePortalPlane.material = redPortalScreenMat;
 const redCameraHelper = new THREE.CameraHelper(redPortalCamera);
 const blueCameraHelper = new THREE.CameraHelper(bluePortalCamera);
 
-// scene.add(blueCameraHelper);
-// scene.add(redCameraHelper);
+helpersFolder.add(helpersState, 'redCameraHelper').name('Red Camera Helper').onChange((v) => {
+    if (v) scene.add(redCameraHelper); else scene.remove(redCameraHelper);
+});
+helpersFolder.add(helpersState, 'blueCameraHelper').name('Blue Camera Helper').onChange((v) => {
+    if (v) scene.add(blueCameraHelper); else scene.remove(blueCameraHelper);
+});
+helpersFolder.open();
 
 function createSignInFrontOfPortal(color, portalPosition, portalRotation, offset = 5) {
     const pos = portalPosition.clone();
