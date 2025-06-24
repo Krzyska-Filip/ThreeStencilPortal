@@ -114,7 +114,9 @@ const portalFragmentShader = `
     void main() {
         vec2 screenUV = vScreenPos.xy / vScreenPos.w;
         screenUV = screenUV * 0.5 + 0.5;
-        gl_FragColor = texture2D(uMainTex, screenUV);
+        vec4 texColor = texture2D(uMainTex, screenUV);
+        texColor.rgb = pow(texColor.rgb, vec3(1.0/2.2)); // Poprawa jasności kolorów
+        gl_FragColor = texColor;
     }
 `;
 
