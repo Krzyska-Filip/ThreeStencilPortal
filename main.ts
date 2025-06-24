@@ -3,6 +3,8 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GUI } from 'three/examples/jsm/libs/lil-gui.module.min.js';
 import * as ENVIROMENT from './environment';
+import * as PORTAL from './portal';
+import { Movement } from './movement';
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
@@ -12,10 +14,10 @@ renderer.setSize( window.innerWidth, window.innerHeight );
 document.body.appendChild( renderer.domElement );
 
 // Kamera i obsługa
-camera.position.setZ(-15);
-const controls = new OrbitControls( camera, renderer.domElement );
+camera.position.set(0, 5, 45);
+const movement = new Movement(camera, renderer.domElement);
 
-// Tło / Interfejs
+// Światło / Tło / Interfejs
 const backgroundTexture = new THREE.TextureLoader().load('/textures/background.jpg');
 scene.background = backgroundTexture;
 
@@ -26,115 +28,59 @@ const helpersState = {
     blueCameraHelper: false
 };
 
-// Światła
 const ambientLight = new THREE.AmbientLight(0xffffff, 2);
 scene.add(ambientLight);
 
-// ----------------------------------------------------------------------------------------------------------
-
-// Pozycje portali
-const redPortalPosition = new THREE.Vector3(11, 0, 7);
-const bluePortalPosition = new THREE.Vector3(-16, 0, -7);
+const redPortalPosition = new THREE.Vector3(17, 0, 7);
+const bluePortalPosition = new THREE.Vector3(-17, 0, -7);
 const redPortalRotation = new THREE.Euler(0, 0, 0);
-const bluePortalRotation = new THREE.Euler(0, - Math.PI / 2, 0);
+const bluePortalRotation = new THREE.Euler(0, - Math.PI / 5, 0);
 
-// Kamera czerwonego portalu
+// Kamery i render targety portali
 const redPortalRenderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight);
 const redPortalCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 redPortalCamera.position.copy(redPortalPosition);
 
-// Kamera niebieskiego portalu
 const bluePortalRenderTarget = new THREE.WebGLRenderTarget(window.innerWidth, window.innerHeight);
 const bluePortalCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 bluePortalCamera.position.copy(bluePortalPosition);
 bluePortalCamera.rotation.copy(bluePortalRotation);
 
-// Stencil maska
-const portalStencil = new THREE.MeshBasicMaterial({ color: 0xffffff });
-portalStencil.colorWrite = false;
-portalStencil.depthWrite = false;
-portalStencil.stencilWrite = true;
-portalStencil.stencilRef = 1;
-portalStencil.stencilFunc = THREE.AlwaysStencilFunc;
-portalStencil.stencilZPass = THREE.ReplaceStencilOp;
-portalStencil.side = THREE.DoubleSide;
+const redPortalStencil = PORTAL.createPortalStencil(redPortalPosition, redPortalRotation, 0xe74c3c);
+const bluePortalStencil = PORTAL.createPortalStencil(bluePortalPosition, bluePortalRotation, 0x3498db);
 
-const redPortalStencil = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), portalStencil.clone());
-redPortalStencil.position.copy(redPortalPosition);
-redPortalStencil.rotation.copy(redPortalRotation);
-redPortalStencil.renderOrder = 1;
 scene.add(redPortalStencil);
 const redStencilFrame = new THREE.BoxHelper(redPortalStencil, 'red');
 scene.add(redStencilFrame);
 
-const bluePortalStencil = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), portalStencil.clone());
-bluePortalStencil.position.copy(bluePortalPosition);
-bluePortalStencil.rotation.copy(bluePortalRotation);
-bluePortalStencil.renderOrder = 1;
 scene.add(bluePortalStencil);
 const blueStencilFrame = new THREE.BoxHelper(bluePortalStencil, 'blue');
 scene.add(blueStencilFrame);
 
+// Tworzenie płaszczyzn portali
 ENVIROMENT.initEnvironment(scene);
-const redPortalPlane = ENVIROMENT.createPortalPlane({
+const redPortalPlane = PORTAL.createPortalPlane({
     renderTarget: bluePortalRenderTarget,
     position: redPortalPosition,
     rotation: redPortalRotation,
 });
 scene.add(redPortalPlane);
 
-const bluePortalPlane = ENVIROMENT.createPortalPlane({
+const bluePortalPlane = PORTAL.createPortalPlane({
     renderTarget: redPortalRenderTarget,
     position: bluePortalPosition,
     rotation: bluePortalRotation,
 });
 scene.add(bluePortalPlane);
 
-// --- SHADERY UV SCREEN SPACE ---
-const portalVertexShader = `
-    varying vec4 vScreenPos;
-
-    void main() {
-        vScreenPos = gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-`;
-
-const portalFragmentShader = `
-    uniform sampler2D uMainTex;
-    varying vec4 vScreenPos;
-
-    void main() {
-        vec2 screenUV = vScreenPos.xy / vScreenPos.w;
-        screenUV = screenUV * 0.5 + 0.5;
-        vec4 texColor = texture2D(uMainTex, screenUV);
-        texColor.rgb = pow(texColor.rgb, vec3(1.0/2.2)); // Poprawa jasności kolorów
-        gl_FragColor = texColor;
-    }
-`;
-
-function createPortalScreenSpaceMaterial(renderTarget) {
-    return new THREE.ShaderMaterial({
-        uniforms: {
-            uMainTex: { value: renderTarget.texture }
-        },
-        vertexShader: portalVertexShader,
-        fragmentShader: portalFragmentShader,
-        transparent: true,
-        stencilWrite: true,
-        stencilRef: 1,
-        stencilFunc: THREE.EqualStencilFunc,
-        stencilZPass: THREE.KeepStencilOp,
-        side: THREE.DoubleSide,
-    });
-}
-
-const redPortalScreenMat = createPortalScreenSpaceMaterial(redPortalRenderTarget);
-const bluePortalScreenMat = createPortalScreenSpaceMaterial(bluePortalRenderTarget);
+// Ustawianie shaderów dla portali
+const redPortalScreenMat = PORTAL.createPortalScreenSpaceMaterial(redPortalRenderTarget);
+const bluePortalScreenMat = PORTAL.createPortalScreenSpaceMaterial(bluePortalRenderTarget);
 
 redPortalPlane.material = bluePortalScreenMat;
 bluePortalPlane.material = redPortalScreenMat;
 
-// Camera helpers
+// Pomocnicze kamery
 const redCameraHelper = new THREE.CameraHelper(redPortalCamera);
 const blueCameraHelper = new THREE.CameraHelper(bluePortalCamera);
 
@@ -146,6 +92,8 @@ helpersFolder.add(helpersState, 'blueCameraHelper').name('Blue Camera Helper').o
 });
 helpersFolder.open();
 
+
+// Tworzenie znaków przed i za portalami
 function createSignInFrontOfPortal(color, portalPosition, portalRotation, offset = 5) {
     const pos = portalPosition.clone();
     pos.y -= 5;
@@ -164,35 +112,23 @@ const sign4 = createSignInFrontOfPortal(0x2ecc71, bluePortalPosition, bluePortal
 scene.add(sign4);
 
 function animate() {
-    controls.update();
     redPortalPlane.updateMatrixWorld(true);
     bluePortalPlane.updateMatrixWorld(true);
+    movement.update();
+    
+    PORTAL.updatePortalCamera({
+        srcPortalPlane: redPortalPlane,
+        dstPortalPlane: bluePortalPlane,
+        playerCamera: camera,
+        portalCamera: bluePortalCamera,
+    });
 
-    {
-        const playerCameraRelativeMatrix = new THREE.Matrix4();
-        playerCameraRelativeMatrix.copy(redPortalPlane.matrixWorld).invert();
-        playerCameraRelativeMatrix.multiply(camera.matrixWorld);
-
-        const bluePortalCameraWorldMatrix = new THREE.Matrix4();
-        bluePortalCameraWorldMatrix.copy(bluePortalPlane.matrixWorld);
-        bluePortalCameraWorldMatrix.multiply(playerCameraRelativeMatrix);
-
-        bluePortalCameraWorldMatrix.decompose(bluePortalCamera.position, bluePortalCamera.quaternion, bluePortalCamera.scale);
-        bluePortalCamera.updateMatrixWorld(true);
-    }
-
-    {
-        const playerCameraRelativeMatrix_RedPortal = new THREE.Matrix4();
-        playerCameraRelativeMatrix_RedPortal.copy(bluePortalPlane.matrixWorld).invert();
-        playerCameraRelativeMatrix_RedPortal.multiply(camera.matrixWorld);
-
-        const redPortalCameraWorldMatrix = new THREE.Matrix4();
-        redPortalCameraWorldMatrix.copy(redPortalPlane.matrixWorld);
-        redPortalCameraWorldMatrix.multiply(playerCameraRelativeMatrix_RedPortal);
-
-        redPortalCameraWorldMatrix.decompose(redPortalCamera.position, redPortalCamera.quaternion, redPortalCamera.scale);
-        redPortalCamera.updateMatrixWorld(true);
-    }
+    PORTAL.updatePortalCamera({
+        srcPortalPlane: bluePortalPlane,
+        dstPortalPlane: redPortalPlane,
+        playerCamera: camera,
+        portalCamera: redPortalCamera,
+    });
 
     redCameraHelper.update();
     blueCameraHelper.update();

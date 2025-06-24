@@ -118,19 +118,3 @@ export function createSign(color: number, position: THREE.Vector3, scale?: THREE
     return signGroup;
 }
 
-export function createPortalPlane({
-    renderTarget,
-    position,
-    rotation,
-}) {
-    const material = new THREE.MeshBasicMaterial({ map: renderTarget.texture, side: THREE.DoubleSide });
-    material.stencilWrite = true;
-    material.stencilRef = 1;
-    material.stencilFunc = THREE.EqualStencilFunc;
-    material.stencilZPass = THREE.KeepStencilOp;
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), material);
-    mesh.position.copy(position);
-    mesh.rotation.copy(rotation);
-    mesh.renderOrder = 2;
-    return mesh;
-}
