@@ -71,7 +71,7 @@ scene.add(bluePortalStencil);
 const blueStencilFrame = new THREE.BoxHelper(bluePortalStencil, 'blue');
 scene.add(blueStencilFrame);
 
-initEnvironment(scene, 15);
+initEnvironment(scene);
 // Portal plane z teksturą z render targetu (widoczny tylko w masce stencil)
 const redPortalMaterial = new THREE.MeshBasicMaterial({ map: redPortalRenderTarget.texture, side: THREE.DoubleSide });
 redPortalMaterial.stencilWrite = true;
@@ -96,7 +96,7 @@ bluePortalPlane.rotation.copy(bluePortalRotation);
 bluePortalPlane.renderOrder = 2;
 scene.add(bluePortalPlane);
 
-initEnvironment(scene, 15);
+initEnvironment(scene);
 
 // --- SHADERY UV SCREEN SPACE ---
 const portalVertexShader = `
