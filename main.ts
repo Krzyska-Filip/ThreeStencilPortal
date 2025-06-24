@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GUI } from 'three/examples/jsm/libs/lil-gui.module.min.js';
-import { initEnvironment } from './environment';
+import * as ENVIROMENT from './environment';
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 1000 );
@@ -71,32 +71,20 @@ scene.add(bluePortalStencil);
 const blueStencilFrame = new THREE.BoxHelper(bluePortalStencil, 'blue');
 scene.add(blueStencilFrame);
 
-initEnvironment(scene);
-// Portal plane z teksturą z render targetu (widoczny tylko w masce stencil)
-const redPortalMaterial = new THREE.MeshBasicMaterial({ map: redPortalRenderTarget.texture, side: THREE.DoubleSide });
-redPortalMaterial.stencilWrite = true;
-redPortalMaterial.stencilRef = 1;
-redPortalMaterial.stencilFunc = THREE.EqualStencilFunc;
-redPortalMaterial.stencilZPass = THREE.KeepStencilOp;
-const redPortalPlane = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), redPortalMaterial);
-redPortalPlane.position.copy(redPortalPosition);
-redPortalPlane.rotation.copy(redPortalRotation);
-redPortalPlane.renderOrder = 2;
+ENVIROMENT.initEnvironment(scene);
+const redPortalPlane = ENVIROMENT.createPortalPlane({
+    renderTarget: bluePortalRenderTarget,
+    position: redPortalPosition,
+    rotation: redPortalRotation,
+});
 scene.add(redPortalPlane);
 
-// Drugi portal (niebieski po lewej)
-const bluePortalMaterial = new THREE.MeshBasicMaterial({ map: bluePortalRenderTarget.texture, side: THREE.DoubleSide });
-bluePortalMaterial.stencilWrite = true;
-bluePortalMaterial.stencilRef = 1;
-bluePortalMaterial.stencilFunc = THREE.EqualStencilFunc;
-bluePortalMaterial.stencilZPass = THREE.KeepStencilOp;
-const bluePortalPlane = new THREE.Mesh(new THREE.PlaneGeometry(6, 6), bluePortalMaterial);
-bluePortalPlane.position.copy(bluePortalPosition);
-bluePortalPlane.rotation.copy(bluePortalRotation);
-bluePortalPlane.renderOrder = 2;
+const bluePortalPlane = ENVIROMENT.createPortalPlane({
+    renderTarget: redPortalRenderTarget,
+    position: bluePortalPosition,
+    rotation: bluePortalRotation,
+});
 scene.add(bluePortalPlane);
-
-initEnvironment(scene);
 
 // --- SHADERY UV SCREEN SPACE ---
 const portalVertexShader = `
@@ -148,6 +136,23 @@ const blueCameraHelper = new THREE.CameraHelper(bluePortalCamera);
 
 // scene.add(blueCameraHelper);
 // scene.add(redCameraHelper);
+
+function createSignInFrontOfPortal(color, portalPosition, portalRotation, offset = 5) {
+    const pos = portalPosition.clone();
+    pos.y -= 5;
+    const dir = new THREE.Vector3(0, 0, 1).applyEuler(portalRotation);
+    pos.add(dir.multiplyScalar(offset));
+    return ENVIROMENT.createSign(color, pos, undefined, portalRotation.clone());
+}
+
+const sign1 = createSignInFrontOfPortal(0x3498db, redPortalPosition, redPortalRotation, -5); // przód czerwonego portalu
+scene.add(sign1);
+const sign2 = createSignInFrontOfPortal(0xe74c3c, redPortalPosition, redPortalRotation, 5); // tył czerwonego portalu
+scene.add(sign2);
+const sign3 = createSignInFrontOfPortal(0xf1c40f, bluePortalPosition, bluePortalRotation, -5); // przód niebieskiego portalu
+scene.add(sign3);
+const sign4 = createSignInFrontOfPortal(0x2ecc71, bluePortalPosition, bluePortalRotation, 5); // tył niebieskiego portalu
+scene.add(sign4);
 
 function animate() {
     controls.update();
